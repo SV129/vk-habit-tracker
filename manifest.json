@@ -4,22 +4,4 @@
   "type": "app",
   "lang": "ru",
   "platforms": ["web", "vk"],
-  "vk_app_id": 53942437,
-  "start_url": "/",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#5181b8",
-  "theme_color": "#5181b8",
-  "icons": [
-    {
-      "src": "icon-278.png",
-      "sizes": "278x278",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-576.png",
-      "sizes": "576x576",
-      "type": "image/png"
-    }
-  ]
 }
