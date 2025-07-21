@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Трекер привычек | VK Mini App</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/vk-io-connect@latest/dist/connect.js"></script>
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Трекер привычек</h1>
+        <div class="motivation">Загрузка...</div>
+
+        <div class="add-habit">
+            <input type="text" id="habit-input" placeholder="Например: Пить 2 литра воды">
+            <button id="add-btn">+ Добавить</button>
+        </div>
+
+        <div class="habits-list">
+            <!-- Сюда добавляются привычки -->
+        </div>
+
+        <div class="stats">
+            <h2>Ваша статистика</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p>Выполнено: <span id="completed-count">0</span> из <span id="total-count">0</span></p>
+        </div>
+    </div>
+</body>
+</html>
