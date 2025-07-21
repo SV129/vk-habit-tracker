@@ -4,4 +4,5 @@
   "type": "app",
   "lang": "ru",
   "platforms": ["web", "vk"],
+  "vk_app_id": 53942437,  
 }
