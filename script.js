@@ -9,165 +9,183 @@
     console.log("Режим теста: VK Connect не загружен, но приложение работает локально!");
 }*/
 
-// Массив мотивационных сообщений для разных ситуаций
-const motivationData = {
-    daily: [
-        "Сегодня — твой день! 🌟",
-        "Маленькие шаги ведут к большим результатам! 👣",
-        "Ты можешь больше, чем думаешь! 💪"
-    ],
-    progress: [
-        {threshold: 0, message: "Сделай первый шаг прямо сейчас! 🚀"},
-        {threshold: 30, message: "Хорошее начало! Продолжай в том же духе! 🌱"},
-        {threshold: 70, message: "Отличный прогресс! Так держать! 🔥"},
-        {threshold: 100, message: "Идеальный результат! Ты просто супер! 🎯"}
-    ],
-    encouragement: [
-        "Не сдавайся! У тебя всё получится! ✨",
-        "Верь в себя — ты способен на большее! 💫",
-        "Каждая привычка делает тебя лучше! 🌿"
-    ]
-};
+// Подключение VK Bridge
+const vkBridge = require('@vkontakte/vk-bridge');
 
-// Инициализация VK API
-function initVK() {
-    if (typeof vkConnect !== 'undefined') {
-        vkConnect.send("VKWebAppInit", {})
-            .then(() => console.log("VK Mini App инициализирован"))
-            .catch(err => console.error("Ошибка инициализации:", err));
-    }
+// Инициализация приложения
+async function initializeApp() {
+  try {
+    // 1. Обязательная инициализация VK Mini App
+    await vkBridge.send('VKWebAppInit');
+    console.log('VK Mini App initialized');
+
+    // 2. Получение информации о пользователе
+    const user = await vkBridge.send('VKWebAppGetUserInfo');
+    updateMotivationMessage(`Привет, ${user.first_name}! Начни улучшать свои привычки!`);
+
+    // 3. Отправка события аналитики
+    await vkBridge.send('VKWebAppTrackEvent', {
+      event_name: 'app_launch',
+      event_data: { timestamp: Date.now() }
+    });
+
+    // 4. Инициализация трекера привычек
+    initHabitTracker();
+
+  } catch (error) {
+    console.error('VK API Error:', error);
+    handleVKBridgeError();
+  }
 }
 
-// Отправка мотивационного уведомления
-function sendMotivationNotification(message) {
-    if (typeof vkConnect !== 'undefined') {
-        vkConnect.send("VKWebAppShowSnackbar", {
-            text: message,
-            timeout: 3000
-        }).catch(err => console.error("Ошибка уведомления:", err));
-    }
-    updateMotivationMessage(message);
-}
-
-// Обновление мотивационного сообщения
-function updateMotivationMessage(message) {
-    const motivationElement = document.querySelector('.motivation');
-    if (message) {
-        motivationElement.textContent = message;
-        return;
-    }
-    
-    // Случайное ежедневное сообщение
-    const randomDaily = motivationData.daily[
-        Math.floor(Math.random() * motivationData.daily.length)
-    ];
-    motivationElement.textContent = randomDaily;
-}
-
-// Анализ прогресса и мотивация
-function checkProgress(completed, total) {
-    if (total === 0) return;
-    
-    const percentage = Math.round((completed / total) * 100);
-    
-    // Сообщение по прогрессу
-    for (const item of motivationData.progress.slice().reverse()) {
-        if (percentage >= item.threshold) {
-            sendMotivationNotification(item.message);
-            break;
+// Обработка ошибок VK Bridge
+function handleVKBridgeError() {
+  // Fallback для локального тестирования
+  if (!window.vkBridge) {
+    window.vkBridge = {
+      send: (method, params) => {
+        console.log(`[MOCK] ${method}`, params);
+        if (method === 'VKWebAppGetUserInfo') {
+          return Promise.resolve({ 
+            first_name: 'Тестовый',
+            last_name: 'Пользователь',
+            id: 1234567
+          });
         }
-    }
-    
-    // Случайное подбадривание каждые 3 завершённые привычки
-    if (completed > 0 && completed % 3 === 0) {
-        const randomEncouragement = motivationData.encouragement[
-            Math.floor(Math.random() * motivationData.encouragement.length)
-        ];
-        sendMotivationNotification(randomEncouragement);
-    }
+        return Promise.resolve({});
+      }
+    };
+    updateMotivationMessage('Режим тестирования (VK Bridge не загружен)');
+  }
+  initHabitTracker();
 }
 
-// Основной код приложения
-document.addEventListener('DOMContentLoaded', () => {
-    initVK();
-    updateMotivationMessage();
-    
-    const habitInput = document.getElementById('habit-input');
-    const addBtn = document.getElementById('add-btn');
-    const habitsList = document.querySelector('.habits-list');
-    const progressFill = document.querySelector('.progress-fill');
-    const completedCount = document.getElementById('completed-count');
-    const totalCount = document.getElementById('total-count');
+// Инициализация трекера привычек
+function initHabitTracker() {
+  const elements = {
+    habitInput: document.getElementById('habit-input'),
+    addBtn: document.getElementById('add-btn'),
+    habitsList: document.querySelector('.habits-list'),
+    progressFill: document.querySelector('.progress-fill'),
+    completedCount: document.getElementById('completed-count'),
+    totalCount: document.getElementById('total-count'),
+    motivation: document.querySelector('.motivation')
+  };
 
-    let habits = JSON.parse(localStorage.getItem('habits')) || [];
+  let habits = JSON.parse(localStorage.getItem('habits')) || [];
 
-    function loadHabits() {
-        habitsList.innerHTML = '';
-        habits.forEach((habit, index) => {
-            const habitItem = document.createElement('div');
-            habitItem.className = 'habit-item';
-            habitItem.innerHTML = `
-                <span class="habit-name">${habit.name}</span>
-                <div class="habit-actions">
-                    <button class="complete-btn" data-index="${index}">
-                        ${habit.completed ? '✅' : '☑️'}
-                    </button>
-                    <button class="delete-btn" data-index="${index}">🗑️</button>
-                </div>
-            `;
-            habitsList.appendChild(habitItem);
+  // Загрузка привычек
+  function loadHabits() {
+    elements.habitsList.innerHTML = '';
+    habits.forEach((habit, index) => {
+      const habitItem = document.createElement('div');
+      habitItem.className = 'habit-item';
+      habitItem.innerHTML = `
+        <span class="habit-name">${habit.name}</span>
+        <div class="habit-actions">
+          <button class="complete-btn" data-index="${index}">
+            ${habit.completed ? '✅' : '☑️'}
+          </button>
+          <button class="delete-btn" data-index="${index}">🗑️</button>
+        </div>
+      `;
+      elements.habitsList.appendChild(habitItem);
+    });
+    updateStats();
+  }
+
+  // Обновление статистики
+  function updateStats() {
+    const total = habits.length;
+    const completed = habits.filter(habit => habit.completed).length;
+    const progress = total > 0 ? (completed / total) * 100 : 0;
+
+    elements.progressFill.style.width = `${progress}%`;
+    elements.completedCount.textContent = completed;
+    elements.totalCount.textContent = total;
+    localStorage.setItem('habits', JSON.stringify(habits));
+    updateMotivationMessage(getMotivationText(completed, total));
+  }
+
+  // Мотивационные сообщения
+  function getMotivationText(completed, total) {
+    const messages = {
+      noHabits: "Добавь свою первую привычку!",
+      allCompleted: "Отличная работа! Ты выполнил все привычки!",
+      default: [
+        "Маленькие шаги приводят к большим результатам!",
+        "Продолжай в том же духе!",
+        "Ты на правильном пути!"
+      ]
+    };
+
+    if (total === 0) return messages.noHabits;
+    if (completed === total) return messages.allCompleted;
+    return messages.default[Math.floor(Math.random() * messages.default.length)];
+  }
+
+  function updateMotivationMessage(text) {
+    elements.motivation.textContent = text;
+  }
+
+  // Добавление привычки
+  elements.addBtn.addEventListener('click', async () => {
+    const name = elements.habitInput.value.trim();
+    if (name) {
+      habits.push({ name, completed: false });
+      elements.habitInput.value = '';
+      
+      try {
+        await vkBridge.send('VKWebAppTrackEvent', {
+          event_name: 'habit_added',
+          event_data: { habit_name: name }
         });
-        updateStats();
+      } catch (e) {
+        console.error('Analytics error:', e);
+      }
+      
+      loadHabits();
     }
+  });
 
-    function updateStats() {
-        const total = habits.length;
-        const completed = habits.filter(habit => habit.completed).length;
-        const progress = total > 0 ? (completed / total) * 100 : 0;
+  // Обработка действий с привычками
+  elements.habitsList.addEventListener('click', async (e) => {
+    const index = e.target.dataset?.index;
+    if (index === undefined) return;
 
-        progressFill.style.width = `${progress}%`;
-        completedCount.textContent = completed;
-        totalCount.textContent = total;
-        
-        checkProgress(completed, total);
-        localStorage.setItem('habits', JSON.stringify(habits));
+    if (e.target.classList.contains('complete-btn')) {
+      habits[index].completed = !habits[index].completed;
+      
+      try {
+        await vkBridge.send('VKWebAppTrackEvent', {
+          event_name: habits[index].completed ? 'habit_completed' : 'habit_unchecked',
+          event_data: { habit_name: habits[index].name }
+        });
+      } catch (e) {
+        console.error('Analytics error:', e);
+      }
+      
+      loadHabits();
+    } else if (e.target.classList.contains('delete-btn')) {
+      const deletedHabit = habits[index].name;
+      habits.splice(index, 1);
+      
+      try {
+        await vkBridge.send('VKWebAppTrackEvent', {
+          event_name: 'habit_deleted',
+          event_data: { habit_name: deletedHabit }
+        });
+      } catch (e) {
+        console.error('Analytics error:', e);
+      }
+      
+      loadHabits();
     }
+  });
 
-    addBtn.addEventListener('click', () => {
-        const name = habitInput.value.trim();
-        if (name) {
-            habits.push({ name, completed: false });
-            habitInput.value = '';
-            sendMotivationNotification("Привычка добавлена! Теперь главное — не сдаваться! 💪");
-            loadHabits();
-        } else {
-            sendMotivationNotification("Введите название привычки!");
-        }
-    });
+  // Первая загрузка
+  loadHabits();
+}
 
-    habitsList.addEventListener('click', (e) => {
-        if (e.target.classList.contains('complete-btn')) {
-            const index = e.target.dataset.index;
-            habits[index].completed = !habits[index].completed;
-            const action = habits[index].completed ? "completed" : "unchecked";
-            sendMotivationNotification(
-                action === "completed" 
-                    ? "Отличная работа! Так держать! 🌟" 
-                    : "Не переживай! Завтра получится лучше! 💫"
-            );
-            loadHabits();
-        } else if (e.target.classList.contains('delete-btn')) {
-            const index = e.target.dataset.index;
-            habits.splice(index, 1);
-            sendMotivationNotification("Привычка удалена. Сосредоточься на оставшихся! 🎯");
-            loadHabits();
-        }
-    });
-
-    // Первое уведомление через 5 секунд
-    setTimeout(() => {
-        sendMotivationNotification("Добро пожаловать в трекер привычек! Начни своё путешествие к лучшей версии себя! 🚀");
-    }, 5000);
-
-    loadHabits();
-});
+// Запуск приложения после загрузки DOM
+document.addEventListener('DOMContentLoaded', initializeApp);
