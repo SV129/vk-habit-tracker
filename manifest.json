@@ -1,8 +1,9 @@
 {
-  "name": "Трекер привычек",
-  "description": "Отслеживай свои привычки и улучшай жизнь!",
-  "type": "app",
-  "lang": "ru",
-  "platforms": ["web", "vk"],
-  "vk_app_id": 53942437,  
+    "name": "Трекер привычек",
+    "description": "Отслеживание ежедневных привычек с интеграцией VK",
+    "type": "app",
+    "lang": "ru",
+    "platforms": ["web", "vk"],
+    "vk_app_id": 53942437,   
+    "start_url": "/?vk_platform=desktop_web"
 }
